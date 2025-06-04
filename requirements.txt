@@ -1,6 +1,6 @@
 fastapi
-uvicorn
-openai
 httpx
 twilio
+uvicorn
 python-dotenv
+openai
