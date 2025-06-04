@@ -1,60 +1,61 @@
 import os
-import openai
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect
+import openai
 
+# Initialize FastAPI
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-# Set up OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# New OpenAI client
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Set up Twilio
+# Twilio environment vars
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_CONVERSATION_SID = os.getenv("TWILIO_CONVERSATION_SID")
+
 
 @app.api_route("/voice", methods=["POST", "GET"])
 async def voice(request: Request):
-    """Returns TwiML to start a ConversationRelay stream."""
+    """TwiML to start a Twilio ConversationRelay connection"""
     response = VoiceResponse()
     connect = Connect()
-    connect.conversation(service_instance_sid=os.getenv("TWILIO_CONVERSATION_SID"))
+    connect.conversation(service_instance_sid=TWILIO_CONVERSATION_SID)
     response.append(connect)
     return Response(content=str(response), media_type="application/xml")
 
 
 @app.post("/callback")
 async def callback(request: Request):
-    """Triggered when a new message is sent to the conversation."""
+    """Triggered when Twilio sends a new message to the conversation"""
     data = await request.json()
 
     try:
         msg = data["Body"]
         conversation_sid = data["ConversationSid"]
-        participant_sid = data["Author"]  # "system" if from webhook, or a user ID
+        participant_sid = data["Author"]
 
-        # Avoid responding to our own messages
+        # Don't reply to our own messages
         if participant_sid == "system":
             return {"status": "ignored"}
 
         print(f"🗣 User: {msg}")
 
-        # Send message to ChatGPT
-        response = await chat_gpt_response(msg)
+        # ChatGPT response
+        chat_response = await get_chat_response(msg)
+        print(f"🤖 GPT: {chat_response}")
 
-        print(f"🤖 GPT: {response}")
-
-        # Post back to Twilio Conversation
+        # Send response back to Twilio Conversation
         async with httpx.AsyncClient(auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)) as client:
             await client.post(
                 f"https://conversations.twilio.com/v1/Conversations/{conversation_sid}/Messages",
-                data={"Author": "system", "Body": response},
+                data={"Author": "system", "Body": chat_response},
             )
 
     except Exception as e:
@@ -63,13 +64,13 @@ async def callback(request: Request):
     return {"status": "ok"}
 
 
-async def chat_gpt_response(user_input: str) -> str:
-    """Sends user input to ChatGPT and returns the response."""
-    chat_completion = await openai.ChatCompletion.acreate(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+async def get_chat_response(user_input: str) -> str:
+    """Uses OpenAI ChatCompletion with new SDK"""
+    chat = client.chat.completions.create(
+        model="gpt-4",  # Or "gpt-4o", "gpt-3.5-turbo"
         messages=[
             {"role": "system", "content": "You're a helpful voice assistant."},
-            {"role": "user", "content": user_input},
+            {"role": "user", "content": user_input}
         ]
     )
-    return chat_completion.choices[0].message.content.strip()
+    return chat.choices[0].message.content.strip()
