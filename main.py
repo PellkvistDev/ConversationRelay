@@ -20,6 +20,7 @@ sessions = {}
 @app.post("/voice")
 async def voice(request: Request):
     """Twilio webhook handler for inbound or outbound call setup."""
+    print("Connecting something")
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
