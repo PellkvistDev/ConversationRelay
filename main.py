@@ -46,7 +46,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             event = message.get("event")
 
-            if event == "start":
+            if event == "setup":
                 data = message.get("start", {})
                 session_id = data.get("session_id") or data.get("conversation_id") or "default_session"
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
