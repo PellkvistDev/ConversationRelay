@@ -34,6 +34,7 @@ async def voice(request: Request):
 async def websocket_endpoint(websocket: WebSocket):
     """Handles ConversationRelay WebSocket messages."""
     await websocket.accept()
+    print("Websocket accepted")
     session_id = None
 
     try:
