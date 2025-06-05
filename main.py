@@ -29,6 +29,7 @@ async def voice(request: Request):
         status_callback="https://conversationrelay.onrender.com/status"  # Optional: for session cleanup
     )
     response.append(connect)
+    print(str(response))
     return Response(content=str(response), media_type="application/xml")
 
 @app.websocket("/ws")
