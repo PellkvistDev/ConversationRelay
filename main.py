@@ -43,10 +43,10 @@ async def websocket_endpoint(websocket: WebSocket):
             event = message.get("event")
 
             if event == "start":
-                # Some versions may use "conversation_id" or "session_id"
-                session_id = message["start"].get("session_id") or message["start"].get("conversation_id")
+                data = message.get("start", {})
+                session_id = data.get("session_id") or data.get("conversation_id") or "default_session"
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
-                print(f"✅ Session started: {session_id}")
+                print(f"Session started: {session_id}")
 
             elif event == "transcription":
                 text = message["transcription"]["text"]
