@@ -34,9 +34,9 @@ async def voice(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    print("Trying to accept websocket")
     await websocket.accept()
-    print("Accepted websocket")
+    print("✅ WebSocket accepted")
+
     session_id = None
 
     try:
@@ -44,13 +44,17 @@ async def websocket_endpoint(websocket: WebSocket):
             message = await websocket.receive_json()
             print("🔵 Raw message:", message)
 
+            if message.get("type") == "setup":
+                session_id = message.get("sessionId") or "default_session"
+                print(f"🆗 Setup message received, session: {session_id}")
+                # Initialize session memory
+                sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
+                continue
+
             event = message.get("event")
 
-            if event == "setup":
-                data = message.get("start", {})
-                session_id = data.get("session_id") or data.get("conversation_id") or "default_session"
-                sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
-                print(f"Session started: {session_id}")
+            if event == "start":
+                print("🎬 Start event received (not always present in ConversationRelay)")
 
             elif event == "transcription":
                 text = message["transcription"]["text"]
@@ -77,6 +81,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         if session_id and session_id in sessions:
             sessions.pop(session_id, None)
+
 
 @app.post("/status")
 async def cleanup_status(request: Request):
