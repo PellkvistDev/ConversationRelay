@@ -32,24 +32,25 @@ async def voice(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Handles ConversationRelay WebSocket messages."""
     await websocket.accept()
-    print("Websocket accepted")
     session_id = None
 
     try:
         while True:
             message = await websocket.receive_json()
+            print("🔵 Raw message:", message)
+
             event = message.get("event")
 
             if event == "start":
-                session_id = message["start"]["session_id"]
+                # Some versions may use "conversation_id" or "session_id"
+                session_id = message["start"].get("session_id") or message["start"].get("conversation_id")
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
-                print(f"Session started: {session_id}")
+                print(f"✅ Session started: {session_id}")
 
             elif event == "transcription":
                 text = message["transcription"]["text"]
-                print(f"[User]: {text}")
+                print(f"[👤 User]: {text}")
                 sessions[session_id].append({"role": "user", "content": text})
 
                 chat_response = client.chat.completions.create(
@@ -57,22 +58,23 @@ async def websocket_endpoint(websocket: WebSocket):
                     messages=sessions[session_id]
                 )
                 reply = chat_response.choices[0].message.content.strip()
-                print(f"[Assistant]: {reply}")
+                print(f"[🤖 GPT]: {reply}")
 
                 sessions[session_id].append({"role": "assistant", "content": reply})
                 await websocket.send_json({"event": "response", "text": reply})
 
             elif event == "stop":
-                print(f"Session ended: {session_id}")
+                print(f"🛑 Session ended: {session_id}")
                 break
 
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        print(f"❌ WebSocket error: {e}")
 
     finally:
-        if session_id:
+        if session_id and session_id in sessions:
             sessions.pop(session_id, None)
         await websocket.close()
+
 
 @app.post("/status")
 async def cleanup_status(request: Request):
