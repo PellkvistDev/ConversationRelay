@@ -75,8 +75,6 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         if session_id and session_id in sessions:
             sessions.pop(session_id, None)
-        await websocket.close()
-
 
 @app.post("/status")
 async def cleanup_status(request: Request):
