@@ -32,7 +32,9 @@ async def voice(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    print("Trying to accept websocket")
     await websocket.accept()
+    print("Accepted websocket")
     session_id = None
 
     try:
