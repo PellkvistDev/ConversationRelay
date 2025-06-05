@@ -4,7 +4,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect, ConversationRela
 import openai
 import os
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI()
 
@@ -13,7 +13,7 @@ async def voice(request: Request):
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
-        url="wss://yourapp.onrender.com/ws",  # Change to your deployed wss endpoint
+        url="wss://conversationrelay.onrender.com/ws",  # Change to your deployed wss endpoint
         welcome_greeting="Hi! Ask me anything!"
     )
     response.append(connect)
@@ -30,8 +30,8 @@ async def websocket_endpoint(websocket: WebSocket):
             if event == "transcription":
                 user_input = message["transcription"]["text"]
 
-                chat_response = openai.chat.completions.create(
-                    model="gpt-4o",
+                chat_response = client.chat.completions.create(
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": user_input},
