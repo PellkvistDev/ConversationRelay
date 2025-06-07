@@ -51,9 +51,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
                 continue
 
-            event = message.get("event")
+            event = message.get("type")
 
-            if event == "start":
+            if event == "setup":
                 print("🎬 Start event received (not always present in ConversationRelay)")
 
             elif event == "transcription":
