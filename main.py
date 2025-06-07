@@ -31,6 +31,7 @@ async def voice(request: Request):
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
         ttsProvider="Amazon"
+        voice="Adriano-Neural",
         debug="debugging"
     )
     response.append(connect)
