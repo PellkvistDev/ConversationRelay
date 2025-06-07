@@ -28,7 +28,8 @@ async def voice(request: Request):
         welcome_greeting="Hi! Ask me anything!",
         status_callback="https://conversationrelay.onrender.com/status",  # Optional: for session cleanup
         intelligenceService=os.getenv("SID"),
-        language="sv-SE"
+        language="sv-SE",
+        debug="debugging"
     )
     response.append(connect)
     print(str(response))
