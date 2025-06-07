@@ -30,8 +30,8 @@ async def voice(request: Request):
         status_callback="https://conversationrelay.onrender.com/status",  # Optional: for session cleanup
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
-        ttsProvider="Amazon",
-        voice="Adriano-Neural",
+        ttsProvider="Google",
+        voice="ko-KR-Neural2-C",
         debug="debugging"
     )
     response.append(connect)
