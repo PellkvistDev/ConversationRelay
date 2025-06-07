@@ -53,13 +53,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
                 continue
 
-            event = message.get("type")
-
-            if event == "setup":
-                print("🎬 Start event received (not always present in ConversationRelay)")
-
-            elif event == "transcription":
-                text = message["transcription"]["text"]
+            elif if message.get("type") == "prompt":
+                text = message.get("voicePrompt")
                 print(f"[👤 User]: {text}")
                 sessions[session_id].append({"role": "user", "content": text})
 
@@ -71,10 +66,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(f"[🤖 GPT]: {reply}")
 
                 sessions[session_id].append({"role": "assistant", "content": reply})
-                await websocket.send_json({"event": "response", "text": reply})
+                await websocket.send_json({"type": "text", "token": reply})
 
-            elif event == "stop":
-                print(f"🛑 Session ended: {session_id}")
+            elif if message.get("type") == "error":
+                print(f"🛑 Recived error from Twilio: {message.get("description")}")
                 break
 
     except Exception as e:
