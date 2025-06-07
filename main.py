@@ -16,7 +16,7 @@ app.add_middleware(
 
 # Memory per call session
 sessions = {}
-greeting = "Nämen tjenare! David här."
+greeting = "Nämen tjenare! Fabian här."
 
 @app.post("/voice")
 async def voice(request: Request):
