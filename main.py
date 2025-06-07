@@ -26,7 +26,8 @@ async def voice(request: Request):
     connect.conversation_relay(
         url="wss://conversationrelay.onrender.com/ws",  # Replace with your Render WSS URL
         welcome_greeting="Hi! Ask me anything!",
-        status_callback="https://conversationrelay.onrender.com/status"  # Optional: for session cleanup
+        status_callback="https://conversationrelay.onrender.com/status",  # Optional: for session cleanup
+        intelligenceService=os.getenv("SID")
     )
     response.append(connect)
     print(str(response))
