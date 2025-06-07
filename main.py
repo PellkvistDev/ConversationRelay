@@ -51,6 +51,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(f"🆗 Setup message received, session: {session_id}")
                 # Initialize session memory
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
+                await websocket.send_json({"type": "ready"})
                 continue
 
             elif message.get("type") == "prompt":
