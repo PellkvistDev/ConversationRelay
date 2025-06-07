@@ -69,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "text", "token": reply})
 
             elif message.get("type") == "error":
-                print(f"🛑 Recived error from Twilio: {message.get("description")}")
+                print(f"🛑 Recived error from Twilio: {message.get('description')}")
                 break
 
     except Exception as e:
