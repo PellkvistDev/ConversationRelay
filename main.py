@@ -51,6 +51,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_id = message.get("sessionId") or "default_session"
                 print(f"🆗 Setup message received, session: {session_id}")
                 # Initialize session memory
+                await websocket.send_json({
+                    "type": "text",
+                    "token": "Hej! Vad vill du prata om idag?"  # Or whatever greeting you want
+                })
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
                 continue
 
