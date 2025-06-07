@@ -71,6 +71,7 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message.get("type") == "error":
                 print(f"🛑 Recived error from Twilio: {message.get('description')}")
                 break
+            continue
 
     except Exception as e:
         print(f"❌ WebSocket error: {e}")
