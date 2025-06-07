@@ -25,7 +25,7 @@ async def voice(request: Request):
     connect = Connect()
     connect.conversation_relay(
         url="wss://conversationrelay.onrender.com/ws",  # Replace with your Render WSS URL
-        welcome_greeting="Hi! Ask me anything!",
+        welcome_greeting="Nämen tjenare!",
         status_callback="https://conversationrelay.onrender.com/status",  # Optional: for session cleanup
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
@@ -51,11 +51,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_id = message.get("sessionId") or "default_session"
                 print(f"🆗 Setup message received, session: {session_id}")
                 # Initialize session memory
-                await websocket.send_json({
-                    "type": "text",
-                    "token": "Hej! Vad vill du prata om idag?"  # Or whatever greeting you want
-                })
-                sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
+                sessions[session_id] = [{"role": "system", "content": "Du är en telefonförsäljare som ringer ett cold call och försöker sälja en höbal. Säg korta meningar så att personen du pratar med också får en chans att prata."}]
                 continue
 
             elif message.get("type") == "prompt":
