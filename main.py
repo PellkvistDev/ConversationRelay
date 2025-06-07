@@ -16,6 +16,7 @@ app.add_middleware(
 
 # Memory per call session
 sessions = {}
+greeting = "Nämen tjenare! David här."
 
 @app.post("/voice")
 async def voice(request: Request):
@@ -25,7 +26,7 @@ async def voice(request: Request):
     connect = Connect()
     connect.conversation_relay(
         url="wss://conversationrelay.onrender.com/ws",  # Replace with your Render WSS URL
-        welcome_greeting="Nämen tjenare!",
+        welcome_greeting=greeting,
         status_callback="https://conversationrelay.onrender.com/status",  # Optional: for session cleanup
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
@@ -51,7 +52,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_id = message.get("sessionId") or "default_session"
                 print(f"🆗 Setup message received, session: {session_id}")
                 # Initialize session memory
-                sessions[session_id] = [{"role": "system", "content": "Du är en telefonförsäljare som ringer ett cold call och försöker sälja en höbal. Säg korta meningar så att personen du pratar med också får en chans att prata."}]
+                with open("promt.txt", "r", encoding="utf-8") as f:
+                    system_prompt = f.read()
+                sessions[session_id] = [{"role": "system", "content": system_prompt}]
+                sessions[session_id].append({"role": "assistant", "content": greeting})
                 continue
 
             elif message.get("type") == "prompt":
