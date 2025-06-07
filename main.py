@@ -53,7 +53,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 sessions[session_id] = [{"role": "system", "content": "You are a helpful assistant."}]
                 continue
 
-            elif if message.get("type") == "prompt":
+            elif message.get("type") == "prompt":
                 text = message.get("voicePrompt")
                 print(f"[👤 User]: {text}")
                 sessions[session_id].append({"role": "user", "content": text})
@@ -68,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 sessions[session_id].append({"role": "assistant", "content": reply})
                 await websocket.send_json({"type": "text", "token": reply})
 
-            elif if message.get("type") == "error":
+            elif message.get("type") == "error":
                 print(f"🛑 Recived error from Twilio: {message.get("description")}")
                 break
 
