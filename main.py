@@ -36,7 +36,7 @@ async def voice(request: Request):
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
         ttsProvider="ElevenLabs",
-        voice="UgBBYS2sOqTuMpoF3BR0",
+        voice="Azw9ahQtVs7SL0Xibr2c",
         debug="debugging"
     )
     response.append(connect)
