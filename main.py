@@ -24,9 +24,9 @@ async def voice(request: Request):
     """Twilio webhook handler for inbound or outbound call setup."""
     form = await request.form()
     call_sid = form.get("CallSid")
-    print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
     if(call_sid==None):
         return
+    print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
@@ -112,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(f"🛑 Twilio error: {message.get('description')}", flush=True)
                 break
 
-            elif message.get("type") == "websocket.disconnect":
+            elif message.get("type") == "disconnect":
                 print("🔌 WebSocket disconnect message received.")
                 break
 
