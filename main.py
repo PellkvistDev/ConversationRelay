@@ -37,7 +37,12 @@ async def voice(request: Request):
         language="sv-SE",
         ttsProvider="ElevenLabs",
         voice="Azw9ahQtVs7SL0Xibr2c",
-        debug="debugging"
+        debug="debugging",
+        interruptible="any",
+        welcomeGreetingInterruptible="any"
+        preemptible=True,
+        reportInputDuringAgentSpeech="any"
+        elevenlabsTextNormalization="on"
     )
     response.append(connect)
     print(str(response), flush=True)
