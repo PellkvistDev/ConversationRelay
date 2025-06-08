@@ -24,7 +24,7 @@ async def voice(request: Request):
     """Twilio webhook handler for inbound or outbound call setup."""
     form = await request.form()
     call_sid = form.get("CallSid")
-    if(call_sid==None):
+    if call_sid is None:
         return
     print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
     response = VoiceResponse()
@@ -91,16 +91,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 reply = ""
 
                 try:
-                    response = client.chat.completions.create(
+                    stream = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=sessions[session_id],
                         stream=True
                     )
-                    async for chunk in response:
-                        delta = chunk.choices[0].delta.get("content", "")
-                        if delta:
-                            reply += delta
-                            await websocket.send_json({"type": "text", "token": delta})
+
+                    for chunk in stream:
+                        delta = chunk.choices[0].delta
+                        if delta and delta.content:
+                            token = delta.content
+                            reply += token
+                            await websocket.send_json({"type": "text", "token": token})
                 except Exception as e:
                     print(f"❌ GPT stream error: {e}", flush=True)
                     continue
