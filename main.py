@@ -40,7 +40,7 @@ async def voice(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    """await websocket.accept()"""
     print("✅ WebSocket accepted")
 
     session_id = None
@@ -79,7 +79,6 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message.get("type") == "error":
                 print(f"🛑 Recived error from Twilio: {message.get('description')}")
                 break
-            continue
 
     except Exception as e:
         print(f"❌ WebSocket error: {e}")
