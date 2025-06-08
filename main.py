@@ -73,6 +73,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 with open("promt.txt", "r", encoding="utf-8") as f:
                     system_prompt = f.read()
 
+                print(system_prompt)
                 sessions[session_id] = [
                     {"role": "system", "content": system_prompt},
                     {"role": "assistant", "content": greeting}
