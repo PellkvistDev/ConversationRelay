@@ -22,7 +22,9 @@ greeting = "Nämen tjenare! Fabian här."
 @app.post("/voice")
 async def voice(request: Request):
     """Twilio webhook handler for inbound or outbound call setup."""
-    print("📞 /voice endpoint triggered", flush=True)
+    form = await request.form()
+    call_sid = form.get("CallSid")
+    print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
@@ -37,7 +39,6 @@ async def voice(request: Request):
     )
     response.append(connect)
     print(str(response), flush=True)
-    print(f"📞 /voice triggered for CallSid: {call_sid}")
     return Response(content=str(response), media_type="application/xml")
 
 
