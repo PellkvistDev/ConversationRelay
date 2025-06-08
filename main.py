@@ -57,7 +57,8 @@ async def websocket_endpoint(websocket: WebSocket):
             print("🔵 Raw frame received:", raw, flush=True)
 
             if "text" not in raw:
-                continue
+                print("🔌 WebSocket disconnect message received.")
+                break
 
             try:
                 import json
