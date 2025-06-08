@@ -25,6 +25,8 @@ async def voice(request: Request):
     form = await request.form()
     call_sid = form.get("CallSid")
     print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
+    if(call_sid=None):
+        return
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
