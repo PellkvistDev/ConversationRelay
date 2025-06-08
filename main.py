@@ -37,6 +37,7 @@ async def voice(request: Request):
     )
     response.append(connect)
     print(str(response), flush=True)
+    print(f"📞 /voice triggered for CallSid: {call_sid}")
     return Response(content=str(response), media_type="application/xml")
 
 
@@ -106,6 +107,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif message.get("type") == "error":
                 print(f"🛑 Twilio error: {message.get('description')}", flush=True)
+                break
+
+            elif message.get("type") == "websocket.disconnect":
+                print("🔌 WebSocket disconnect message received.")
                 break
 
     except Exception as e:
