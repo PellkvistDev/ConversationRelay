@@ -7,11 +7,9 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import openai
-from elevenlabs import ElevenLabs
 
 # Initialize clients
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-tts_client = ElevenLabs(api_key=os.getenv("ELEVEN_KEY"))
 
 # Setup FastAPI app
 app = FastAPI()
