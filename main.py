@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import asyncio
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -108,15 +109,23 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     first_token_time = None
 
-                    for chunk in stream:
-                        delta = chunk.choices[0].delta
-                        if delta and delta.content:
-                            if first_token_time is None:
-                                first_token_time = time.time()
-                                print(f"⏱️ Time to first GPT token: {first_token_time - gpt_start_time:.2f} sec", flush=True)
-                            token = delta.content
-                            reply += token
-                            await websocket.send_json({"type": "text", "token": token})
+                    async def stream_tokens():
+                        nonlocal reply, first_token_time
+                        for chunk in stream:
+                            delta = chunk.choices[0].delta
+                            if delta and delta.content:
+                                token = delta.content
+                                reply += token
+                                if first_token_time is None:
+                                    first_token_time = time.time()
+                                    print(f"⏱️ Time to first GPT token: {first_token_time - gpt_start_time:.2f} sec", flush=True)
+                                await websocket.send_json({"type": "text", "token": token, "last": False})
+                                await asyncio.sleep(0)
+
+                        # Send final signal
+                        await websocket.send_json({"type": "text", "token": ".", "last": True})
+
+                    await stream_tokens()
 
                     total_gpt_time = time.time() - gpt_start_time
                     print(f"✅ Total GPT generation time: {total_gpt_time:.2f} sec", flush=True)
