@@ -7,9 +7,11 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import openai
+from elevenlabs import ElevenLabs
 
-# Initialize OpenAI client
+# Initialize clients
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+tts_client = ElevenLabs(api_key=os.getenv("ELEVEN_KEY"))
 
 # Setup FastAPI app
 app = FastAPI()
@@ -21,13 +23,12 @@ app.add_middleware(
 sessions = {}
 greeting = "Nämen tjenare! Fabian här."
 
-
 @app.post("/voice")
 async def voice(request: Request):
     form = await request.form()
     call_sid = form.get("CallSid")
-    if call_sid is None:
-        return
+    if not call_sid:
+        return Response(status_code=400)
     print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
 
     response = VoiceResponse()
@@ -51,11 +52,19 @@ async def voice(request: Request):
     print(str(response), flush=True)
     return Response(content=str(response), media_type="application/xml")
 
+async def keepalive(websocket: WebSocket):
+    while True:
+        try:
+            await websocket.send_json({"type": "ping"})
+        except:
+            break
+        await asyncio.sleep(15)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("✅ WebSocket accepted", flush=True)
+    asyncio.create_task(keepalive(websocket))
 
     session_id = None
 
@@ -63,112 +72,116 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             raw = await websocket.receive()
             print("🔵 Raw frame received:", raw, flush=True)
-
             if "text" not in raw:
-                print("🔌 WebSocket disconnect message received.")
+                print("🔌 WebSocket disconnect message received.", flush=True)
                 break
 
             try:
                 message = json.loads(raw["text"])
             except Exception as e:
-                print(f"❗ Error parsing JSON: {e}", flush=True)
+                print(f"❗ JSON parse error: {e}", flush=True)
                 continue
 
-            if message.get("type") == "setup":
-                session_id = message.get("sessionId") or "default_session"
-                print(f"🆗 Setup for session: {session_id}", flush=True)
-
-                with open("promt.txt", "r", encoding="utf-8") as f:
-                    system_prompt = f.read()
-
-                print(system_prompt)
-                sessions[session_id] = [
+            msg_type = message.get("type")
+            if msg_type == "setup":
+                session_id = message.get("sessionId", "default_session")
+                print(f"🆗 Setup session: {session_id}", flush=True)
+                try:
+                    with open("promt.txt", encoding="utf-8") as f:
+                        system_prompt = f.read()
+                except FileNotFoundError:
+                    system_prompt = ""
+                sessions[session_id] = {"messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "assistant", "content": greeting}
-                ]
-                continue
+                ], "tts_start": None}
 
-            elif message.get("type") == "prompt":
-                text = message.get("voicePrompt")
+            elif msg_type == "prompt":
+                text = message.get("voicePrompt", "")
                 print(f"[👤 User]: {text}", flush=True)
-
                 if not session_id or session_id not in sessions:
-                    print("⚠️ No session found", flush=True)
+                    print("⚠️ No active session", flush=True)
                     continue
 
-                sessions[session_id].append({"role": "user", "content": text})
+                # Trim history
+                history = sessions[session_id]["messages"]
+                history.append({"role": "user", "content": text})
+                sessions[session_id]["messages"] = history[-6:]
+
                 reply = ""
+                model = "gpt-4o-mini"
 
-                try:
-                    gpt_start_time = time.time()
-                    stream = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=sessions[session_id],
-                        stream=True
-                    )
+                # Try streaming with fallback
+                for attempt in range(2):
+                    try:
+                        start = time.time()
+                        first_token_time = None
+                        stream = await asyncio.wait_for(
+                            client.chat.completions.create(
+                                model=model,
+                                messages=sessions[session_id]["messages"],
+                                stream=True
+                            ), timeout=10.0
+                        )
 
-                    first_token_time = None
-
-                    async def stream_tokens():
-                        nonlocal reply, first_token_time
-                        for chunk in stream:
+                        async for chunk in stream:
                             delta = chunk.choices[0].delta
                             if delta and delta.content:
                                 token = delta.content
                                 reply += token
                                 if first_token_time is None:
                                     first_token_time = time.time()
-                                    print(f"⏱️ Time to first GPT token: {first_token_time - gpt_start_time:.2f} sec", flush=True)
+                                    print(f"⏱️ First GPT token: {first_token_time - start:.2f}s", flush=True)
                                 await websocket.send_json({"type": "text", "token": token, "last": False})
                                 await asyncio.sleep(0)
 
-                        # Send final signal
-                        await websocket.send_json({"type": "text", "token": ".", "last": True})
+                        await websocket.send_json({"type": "text", "token": "", "last": True})
+                        duration = time.time() - start
+                        print(f"✅ GPT full time: {duration:.2f}s", flush=True)
+                        break
 
-                    await stream_tokens()
-
-                    total_gpt_time = time.time() - gpt_start_time
-                    print(f"✅ Total GPT generation time: {total_gpt_time:.2f} sec", flush=True)
-
-                except Exception as e:
-                    print(f"❌ GPT stream error: {e}", flush=True)
-                    continue
+                    except asyncio.TimeoutError:
+                        print(f"⚡ GPT timeout with {model}", flush=True)
+                        model = "gpt-3.5-turbo"
 
                 print(f"[🤖 GPT]: {reply}", flush=True)
-                sessions[session_id].append({"role": "assistant", "content": reply})
+                sessions[session_id]["messages"].append({"role": "assistant", "content": reply})
 
-            elif message.get("type") == "error":
+            elif msg_type == "tts_start":
+                sessions[session_id]["tts_start"] = time.time()
+                print("🔊 TTS started", flush=True)
+
+            elif msg_type == "tts_end":
+                started = sessions[session_id].get("tts_start")
+                if started:
+                    print(f"🔊 TTS duration: {time.time() - started:.2f}s", flush=True)
+
+            elif msg_type == "startOfAudio":
+                print("▶️ Audio playback started", flush=True)
+
+            elif msg_type == "endOfAudio":
+                print("⏹ Audio playback ended", flush=True)
+
+            elif msg_type == "error":
                 print(f"🛑 Twilio error: {message.get('description')}", flush=True)
                 break
 
-            elif message.get("type") == "disconnect":
-                print("🔌 WebSocket disconnect message received.")
+            elif msg_type == "disconnect":
+                print("🔌 Client disconnect", flush=True)
                 break
 
-            elif message.get("type") == "tts_start":
-                sessions[session_id].append({"tts_start": time.time()})
-                print("🔊 TTS started", flush=True)
-
-            elif message.get("type") == "tts_end":
-                start = sessions[session_id].pop("tts_start", None)
-                if start:
-                    duration = time.time() - start
-                    print(f"🔊 TTS duration: {duration:.2f} sec", flush=True)
-
     except Exception as e:
-        print(f"❌ WebSocket error: {e}", flush=True)
-
+        print(f"❌ WS error: {e}", flush=True)
     finally:
-        if session_id and session_id in sessions:
+        if session_id in sessions:
             sessions.pop(session_id, None)
-            print(f"🧹 Session {session_id} cleaned up", flush=True)
-
+            print(f"🧹 Cleaned session {session_id}", flush=True)
 
 @app.post("/status")
 async def cleanup_status(request: Request):
     data = await request.form()
-    session_id = data.get("CallSid")
-    if session_id and session_id in sessions:
-        sessions.pop(session_id)
-        print(f"🧼 Status cleanup: {session_id}", flush=True)
+    sid = data.get("CallSid")
+    if sid and sid in sessions:
+        sessions.pop(sid)
+        print(f"🧼 Status cleaned: {sid}", flush=True)
     return Response(status_code=200)
