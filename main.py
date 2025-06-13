@@ -1,4 +1,6 @@
 import os
+import time
+import json
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,12 +23,12 @@ greeting = "Nämen tjenare! Fabian här."
 
 @app.post("/voice")
 async def voice(request: Request):
-    """Twilio webhook handler for inbound or outbound call setup."""
     form = await request.form()
     call_sid = form.get("CallSid")
     if call_sid is None:
         return
     print(f"📞 /voice triggered for CallSid: {call_sid}", flush=True)
+
     response = VoiceResponse()
     connect = Connect()
     connect.conversation_relay(
@@ -66,7 +68,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 break
 
             try:
-                import json
                 message = json.loads(raw["text"])
             except Exception as e:
                 print(f"❗ Error parsing JSON: {e}", flush=True)
@@ -98,18 +99,28 @@ async def websocket_endpoint(websocket: WebSocket):
                 reply = ""
 
                 try:
+                    gpt_start_time = time.time()
                     stream = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=sessions[session_id],
                         stream=True
                     )
 
+                    first_token_time = None
+
                     for chunk in stream:
                         delta = chunk.choices[0].delta
                         if delta and delta.content:
+                            if first_token_time is None:
+                                first_token_time = time.time()
+                                print(f"⏱️ Time to first GPT token: {first_token_time - gpt_start_time:.2f} sec", flush=True)
                             token = delta.content
                             reply += token
                             await websocket.send_json({"type": "text", "token": token})
+
+                    total_gpt_time = time.time() - gpt_start_time
+                    print(f"✅ Total GPT generation time: {total_gpt_time:.2f} sec", flush=True)
+
                 except Exception as e:
                     print(f"❌ GPT stream error: {e}", flush=True)
                     continue
@@ -125,6 +136,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 print("🔌 WebSocket disconnect message received.")
                 break
 
+            elif message.get("type") == "tts_start":
+                sessions[session_id].append({"tts_start": time.time()})
+                print("🔊 TTS started", flush=True)
+
+            elif message.get("type") == "tts_end":
+                start = sessions[session_id].pop("tts_start", None)
+                if start:
+                    duration = time.time() - start
+                    print(f"🔊 TTS duration: {duration:.2f} sec", flush=True)
+
     except Exception as e:
         print(f"❌ WebSocket error: {e}", flush=True)
 
@@ -136,7 +157,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/status")
 async def cleanup_status(request: Request):
-    """Optional: cleans up session when Twilio sends status callback."""
     data = await request.form()
     session_id = data.get("CallSid")
     if session_id and session_id in sessions:
