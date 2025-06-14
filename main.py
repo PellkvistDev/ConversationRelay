@@ -105,15 +105,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     try:
                         start = time.time()
                         first_token_time = None
-                        stream = await asyncio.wait_for(
-                            client.chat.completions.create(
-                                model=model,
-                                messages=sessions[session_id]["messages"],
-                                stream=True
-                            ), timeout=10.0
+                        stream = client.chat.completions.create(
+                            model=model,
+                            messages=sessions[session_id]["messages"],
+                            stream=True
                         )
 
-                        async for chunk in stream:
+                        for chunk in stream:
+
                             delta = chunk.choices[0].delta
                             if delta and delta.content:
                                 token = delta.content
