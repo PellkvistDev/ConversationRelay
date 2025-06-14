@@ -40,7 +40,7 @@ async def voice(request: Request):
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
         ttsProvider="ElevenLabs",
-        voice="Azw9ahQtVs7SL0Xibr2c-0.9_0.6_0.4",
+        voice="Azw9ahQtVs7SL0Xibr2c-0.8_0.6_0.4",
         debug="debugging",
         interruptible="any",
         welcomeGreetingInterruptible="any",
