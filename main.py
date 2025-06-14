@@ -7,11 +7,9 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import openai
-from elevenlabs import ElevenLabs
 
-# Initialize clients
+# Initialize OpenAI client
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-tts_client = ElevenLabs(api_key=os.getenv("ELEVEN_KEY"))
 
 # Setup FastAPI app
 app = FastAPI()
@@ -40,7 +38,7 @@ async def voice(request: Request):
         intelligenceService=os.getenv("SID"),
         language="sv-SE",
         ttsProvider="ElevenLabs",
-        voice="Azw9ahQtVs7SL0Xibr2c-0.8_0.6_0.4",
+        voice="Azw9ahQtVs7SL0Xibr2c-0.9_0.6_0.4",
         debug="debugging",
         interruptible="any",
         welcomeGreetingInterruptible="any",
@@ -52,16 +50,10 @@ async def voice(request: Request):
     print(str(response), flush=True)
     return Response(content=str(response), media_type="application/xml")
 
-# No application-level pings to Twilio; remove keepalive to avoid Invalid message errors
-async def keepalive(websocket: WebSocket):
-    # Placeholder: WebSocket control pings are handled by underlying framework
-    await asyncio.sleep(0)
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("✅ WebSocket accepted", flush=True)
-    asyncio.create_task(keepalive(websocket))
 
     session_id = None
 
@@ -130,7 +122,6 @@ async def websocket_endpoint(websocket: WebSocket):
                                     first_token_time = time.time()
                                     print(f"⏱️ First GPT token: {first_token_time - start:.2f}s", flush=True)
                                 await websocket.send_json({"type": "text", "token": token, "last": False})
-                                await asyncio.sleep(0)
 
                         await websocket.send_json({"type": "text", "token": "", "last": True})
                         duration = time.time() - start
